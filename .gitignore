@@ -1,0 +1,23 @@
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# 虚拟环境
+env/
+venv/
+.venv/
+
+# Conda 环境
+.conda/
+
+# API Key 等敏感文件
+*.env
+api_key.txt
+
+# VS Code 设置
+.vscode/
+
+# 临时文件
+*.tmp
