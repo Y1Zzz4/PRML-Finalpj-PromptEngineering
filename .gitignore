@@ -21,3 +21,9 @@ api_key.txt
 
 # 临时文件
 *.tmp
+
+# 忽略所有的 PNG 图片
+*.png
+
+# 忽略所有的 LaTeX 临时或生成的 tex 文件
+*.tex

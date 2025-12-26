@@ -5,76 +5,144 @@
 # 4）用 parse_output 解析模型输出
 # 5）统计有多少完全匹配 ground truth 并计算 accuracy
 
-import os, json
-# from openai import OpenAI
+import os
+import json
+import time
+from dotenv import load_dotenv
+from openai import OpenAI
 from template import construct_prompt, parse_output
+from visualizer import ARCVisualizer
 
-def load_jsonl(path):
+# 1. 加载环境变量
+load_dotenv()
+API_KEY = os.getenv("DEEPSEEK_API_KEY")
+BASE_URL = os.getenv("DEEPSEEK_BASE_URL")
+MODEL_NAME = os.getenv("DEEPSEEK_MODEL")
+
+#初始化客户端
+client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
+vis = ARCVisualizer()
+
+def call_model(messages):
     """
-    功能：
-        从给定的 jsonl 文件中读取所有样本，并返回一个列表，每个元素是一个任务字典。
-        每一行对应一个 ARC 任务（例如包含 "train" / "test" 等字段）。
-
-    输入参数：
-        path: 字符串形式的文件路径，例如 "val.jsonl"。
-
-    返回值：
-        data: 列表（list），其中每个元素是一个字典（dict），表示一个 ARC 任务。
-              例如 data[i] = d_i，其中 d_i 可以直接传给 construct_prompt(d_i) 使用。
+    调用大语言模型接口，获取响应
+    
+    参数:
+    messages (list): OpenAI API的message格式列表
+    
+    返回:
+    str: 模型的文本响应
     """
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=messages,
+            temperature=1.0,
+            max_tokens=8000,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"API 调用错误: {e}")
+        return ""
 
-
-def check_accuracy(predictions, ground_truths):
+def check_accuracy(predicted, ground_truth):
     """
-    功能：
-        计算模型预测结果与 ground truth 之间的“完全匹配”准确率。
-        完全匹配指：预测网格与真实网格在尺寸和每个元素上都完全相同。
-
-    输入参数：
-        predictions: 列表（list）
-                     每个元素是模型预测的输出网格（通常是一个二维列表，如 [[0,1],[1,0],...]）。
-        ground_truths: 列表（list）
-                       每个元素是对应样本的真实输出网格（二维列表）。
-
-    返回值：
-        accuracy: 浮点数（float），表示完全匹配的比例
+    检查预测结果是否与真实答案完全匹配
+    
+    参数:
+    predicted (list): 预测的二维数组
+    ground_truth (list): 真实的二维数组
+    
+    返回:
+    bool: 如果完全匹配返回 True，否则返回 False
     """
-
-
-def speak_and_listen(messages, model_name, temperature=0.0):
-    """
-    功能：
-        调用大语言模型 API，将 messages 作为对话输入，返回模型生成的文本回答。
-
-        注意：
-        - messages 通常是一个符合 OpenAI / 其他厂商接口格式的列表，
-          由 construct_prompt(d) 生成，例如：
-          [
-            {"role": "system", "content": "..."},
-            {"role": "user", "content": "..."},
-            ...
-          ]
-        - 本函数只负责“发送请求 + 接收模型回答”，不做解析。
-
-    输入参数：
-        messages: 列表（list），对话内容，由 construct_prompt(d) 返回。
-        model_name: 字符串（str），要调用的模型名称，例如 "gpt-4o-mini"。
-        temperature: 浮点数（float），采样温度，控制随机性，默认 0.0。
-
-    返回值：
-        reply_text: 字符串（str），表示模型的主回答文本内容。
-                    之后会被交给 parse_output(reply_text) 进行网格解析。
-    """
-
+    if predicted is None or ground_truth is None:
+        return False
+    return predicted == ground_truth
 
 def main():
     """
     功能：
         串联整个评测流程，形成完整的 pipeline。
-        主要步骤示意（具体实现由你在填代码时决定）：
     """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    val_path = os.path.join(script_dir, "..", "data", "val.jsonl")
+    visuals_dir = os.path.join(script_dir, "..", "visuals")
+    
+    vis.clear_visuals_dir(visuals_dir)
+
+    if not os.path.exists(val_path):
+        print(f"错误: 找不到文件 {val_path}")
+        return
+
+    print(f"正在加载数据: {val_path} ...")
+    with open(val_path, "r", encoding="utf-8") as f:
+        # 读取所有行
+        all_lines = f.readlines()
+    
+    tasks = [json.loads(line) for line in all_lines]
+    total_tasks = len(tasks)
+    print(f"共加载 {total_tasks} 个任务。开始评测...")
+
+    correct_count = 0
+    
+    # 快速测试 baseline
+    # tasks = tasks[:5]
+
+    for i, task in enumerate(tasks):
+        print(f"\n--- Processing Task {i+1}/{len(tasks)} ---")
+        
+        # 1. 获取 Ground Truth (真实答案)
+        ground_truth = task['test'][0]['output']
+        input_grid = task['test'][0]['input']
+        
+        # 2. 构建 Prompt
+        messages = construct_prompt(task)
+        
+        # 3. 调用模型
+        # print("User Prompt:", messages[-1]['content']) # 调试用
+        start_time = time.time()
+        raw_response = call_model(messages)
+        elapsed = time.time() - start_time
+        
+        # 4. 解析输出
+        pred_grid = parse_output(raw_response)
+        
+        # 5. 验证结果
+        is_correct = check_accuracy(pred_grid, ground_truth)
+        
+        if is_correct:
+            correct_count += 1
+            status = "成功 (AC)"
+        else:
+            status = "失败 (WA)"
+            # 保存 PNG 和 TEX 
+            # 定义当前任务的根目录
+            task_dir = os.path.join(visuals_dir, f"task_{i+1}")
+    
+            # 记录 Input, Ground Truth, Prediction
+            vis.save_task_visuals(task_dir, i+1, task['test'][0]['input'], "input")
+            vis.save_task_visuals(task_dir, i+1, ground_truth, "gt")
+            
+            if pred_grid:
+                vis.save_task_visuals(task_dir, i+1, pred_grid, "pred")
+
+            print(f"   [Done] 可视化已同步更新至: {task_dir}")
+
+        print(f"耗时: {elapsed:.2f}s | 状态: {status}")
+        
+        # 如果解析失败，打印部分 raw response 用于调试
+        if pred_grid is None:
+            print(f"解析失败。模型原始回复 (前100字): {raw_response[:100]}...")
+            
+    # 6. 统计
+    accuracy = (correct_count / len(tasks)) * 100
+    print("\n" + "="*40)
+    print("评测结束 (Evaluation Finished)")
+    print(f"总任务数: {len(tasks)}")
+    print(f"正确数量: {correct_count}")
+    print(f"准确率 (Accuracy): {accuracy:.2f}%")
+    print("="*40)
 
 if __name__ == "__main__":
     main()
-
-# 上面的函数只是作为示例框架，你可以任意修改和实现其中的逻辑

@@ -6,6 +6,7 @@
 - `src/`：源代码
   - template.py：construct_prompt 和 parse_output 实现
   - test_prompt.py：评测脚本
+  - visualizer.py: 失败案例可视化
 - `data/`：数据集
   - val.jsonl：30 条验证集
   - val_hard.jsonl：120 条更难数据集（加分项）
