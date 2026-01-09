@@ -35,17 +35,29 @@ conda activate prml_prompt
 ```
 
 ## .env配置（根目录）
+```
 DEEPSEEK_API_KEY=sk-your-real-api-key-here
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 DEEPSEEK_MODEL=deepseek-chat
+```
 
 
 ## 使用方法（根目录下）
 1、推理（已在本地完成）
-  python inference/run_inference.py --strategy '策略名（默认baseline）' --dataset '数据集名（默认val）'
-
+```
+  python inference/run_inference.py --strategy '策略名'（默认baseline） --dataset '数据集名'（默认val）
+```
 2、评测
-   python evaluation/evaluate.py --pred '结果文件路径（必须）' --val '输入文件路径（默认'data/val.jsonl'）'
-
+```
+   python evaluation/evaluate.py --pred '单个结果文件路径'或'all'(all表示评测'results/'下所有结果文件)（必须） --val '原数据文件路径'（默认'data/val.jsonl'）
+```
 3、可视化
-  python visualization/visualize_cases.py --strategy '策略名（必须）' --task_id '任务索引（0-29）（必须）' --save(可选是否保存）--output_dir '保存路径（可选，默认'visuals_results'）
+```
+  python visualization/visualize_cases.py --strategy '策略名'（必须） --task_id '任务索引'（0-29）（必须） --save（可选，是否保存为图片）--output_dir '保存路径'（可选，默认'visuals_results'）
+```
+
+注：我提交了本地运行之后的所有策略的results的压缩包，只需将结果文件导入项目空results文件夹中（注意是结果文件，不是文件夹），运行
+  ```
+  python .\evaluation\evaluate.py --pred all
+  ```
+即可进行批量评测。
