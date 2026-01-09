@@ -1,0 +1,4 @@
+requests==2.31.0  # API 调用
+python-dotenv==1.0.0  # 加载 .env
+matplotlib==3.7.1  # 可视化
+numpy==1.24.3  # 数组处理
