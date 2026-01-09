@@ -32,7 +32,7 @@
 ```bash
 conda create -n prml_prompt python=3.10
 conda activate prml_prompt
-
+```
 
 ## .env配置（根目录）
 DEEPSEEK_API_KEY=sk-your-real-api-key-here
