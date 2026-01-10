@@ -19,14 +19,13 @@ def construct_prompt(d):
 
     # 1. System Prompt: 设定人设和严格的输出格式限制
     system_content = (
-        "你是一个 AI 助手。\n"
-        "请直接输出预测的 Output Grid。\n"
-        "输出必须是标准的二维整数数组（JSON 格式）。\n"
-        "不要输出任何解释或多余内容。"
+        "You are an intelligent Abstract Reasoning Assistant.\n"
+        "Your goal is to solve ARC (Abstraction and Reasoning Corpus) tasks.\n"
+        "The output must be strictly a 2D integer array [[...]], single line, without any explanation, text, or code blocks."
     )
 
    # 2. User Prompt: 拼接训练样本
-    user_content = "根据以下示例，推断 Test Input 的输出。\n\n"
+    user_content = "Based on the examples, infer the Test Output.\n\n"
 
     for idx, example in enumerate(train_examples):
         user_content += f"--- Example {idx + 1} ---\n"

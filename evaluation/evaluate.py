@@ -60,27 +60,41 @@ def evaluate_single(val_data: list, preds: list, file_name: str) -> dict:
 
 
 def print_summary(results: list[dict]):
-    """打印所有结果的汇总（简化版，每行一个结果，清晰易读）"""
-    print("\n" + "="*60)
+    """打印所有结果的汇总"""
+    print("\n" + "="*80) 
     print("批量评估汇总（按准确率降序）")
-    print("="*60)
+    print("="*80)
 
     # 按准确率降序排序
     sorted_results = sorted(results, key=lambda x: x["accuracy"], reverse=True)
 
     for res in sorted_results:
-        # 从文件名解析 strategy 和 dataset
-        parts = res["file"].stem.split("_")
-        strategy = parts[0] if len(parts) >= 1 else "unknown"
-        dataset = parts[1] if len(parts) >= 2 else "unknown"
+        stem = res["file"].stem
+        # 从右往左解析，或者匹配已知的数据集后缀
+        if stem.endswith("_val_hard"):
+            dataset = "val_hard"
+            # 去掉后缀，剩下的就是策略名
+            strategy = stem[:-9]
+        elif stem.endswith("_val"):
+            dataset = "val"
+            strategy = stem[:-4]
+        else:
+            # 如果不是标准后缀，则假设最后一个下划线后是数据集
+            parts = stem.rsplit("_", 1)
+            if len(parts) == 2:
+                strategy = parts[0]
+                dataset = parts[1]
+            else:
+                strategy = stem
+                dataset = "unknown"
 
-        print(f"文件: {res['file'].name} | "
-              f"数据集: {dataset} | "
-              f"策略: {strategy} | "
-              f"准确率: {res['accuracy']*100:.2f}% | "
+        print(f"文件: {res['file'].name:<35} | "
+              f"数据集: {dataset:<8} | " 
+              f"策略: {strategy:<25} | " 
+              f"准确率: {res['accuracy']*100:5.2f}% | "
               f"正确/总数: {res['correct']}/{res['total']}")
 
-    print("="*60)
+    print("="*80)
 
 
 def main():

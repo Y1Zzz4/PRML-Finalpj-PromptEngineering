@@ -35,13 +35,14 @@ def discover_strategies() -> Dict[str, Callable]:
     """动态发现 prompts/ 目录下的策略模块"""
     strategies = {}
     for file in PROMPT_DIR.glob("*.py"):
-        if file.name.startswith("__") or file.name.startswith("strategy_"):  # 支持 strategy_ 前缀或直接 baseline.py
+        if file.name == "__init__.py":  # 跳过 __init__.py
             continue
-        module_name = file.stem  # 如 baseline, rule_induction
+        module_name = file.stem  # 如 baseline, strategy_cot, strategy_reflection
         try:
             module = importlib.import_module(f"prompts.{module_name}")
             if hasattr(module, "construct_prompt"):
-                strategies[module_name] = module.construct_prompt
+                display_name = module_name.replace("strategy_", "")
+                strategies[display_name] = module.construct_prompt
         except ImportError as e:
             print(f"警告: 无法加载策略 {module_name}: {e}")
     return strategies
@@ -100,6 +101,42 @@ def process_single_task(task: dict, construct_prompt: Callable) -> dict:
     }
 
 
+def run_strategy(strategy_name: str, construct_prompt: Callable, dataset: str, limit: Optional[int], output_dir: str):
+    """运行单个策略的推理"""
+    print(f"\n=== 开始运行策略: {strategy_name} ===")
+    
+    # 数据路径
+    data_path = Path("data") / f"{dataset}.jsonl"
+    if not data_path.exists():
+        raise FileNotFoundError(f"数据集不存在: {data_path}")
+    
+    # 输出目录和文件
+    output_dir_path = Path(output_dir)
+    output_dir_path.mkdir(exist_ok=True)
+    output_file = output_dir_path / f"{strategy_name}_{dataset}.json"
+    
+    results = []
+    
+    with open(data_path, "r", encoding="utf-8") as f:
+        for line_idx, line in enumerate(f):
+            if limit is not None and line_idx >= limit:
+                break
+                
+            task = json.loads(line.strip())
+            result = process_single_task(task, construct_prompt)
+            result["strategy"] = strategy_name
+            results.append(result)
+            
+            print(f"完成任务 {line_idx + 1}")
+    
+    # 保存结果
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
+    
+    print(f"策略 {strategy_name} 推理完成！结果已保存到: {output_file}")
+    print(f"共处理 {len(results)} 个任务\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="运行 ARC 推理并保存结果")
     parser.add_argument("--dataset", type=str, default="val", choices=["val", "val_hard"],
@@ -113,41 +150,30 @@ def main():
     
     args = parser.parse_args()
     
-    if args.strategy not in STRATEGY_MAP:
-        raise ValueError(f"未知策略: {args.strategy}. 可用: {', '.join(STRATEGY_MAP.keys())}")
+    if args.strategy == "all":
+        # 运行所有策略
+        if not STRATEGY_MAP:
+            print("未发现任何策略，请检查 prompts/ 目录")
+            return
+        
+        print(f"发现策略: {', '.join(STRATEGY_MAP.keys())}")
+        print(f"开始运行所有策略（数据集: {args.dataset}）\n")
+        
+        for strategy_name, construct_prompt in STRATEGY_MAP.items():
+            run_strategy(strategy_name, construct_prompt, args.dataset, args.limit, args.output_dir)
+        
+        print("所有策略运行完成！")
     
-    construct_prompt = STRATEGY_MAP[args.strategy]
+    elif args.strategy:
+        # 单个策略
+        if args.strategy not in STRATEGY_MAP:
+            raise ValueError(f"未知策略: {args.strategy}. 可用: {', '.join(STRATEGY_MAP.keys())} 或 'all'")
+        
+        construct_prompt = STRATEGY_MAP[args.strategy]
+        run_strategy(args.strategy, construct_prompt, args.dataset, args.limit, args.output_dir)
     
-    # 数据路径
-    data_path = Path("data") / f"{args.dataset}.jsonl"
-    if not data_path.exists():
-        raise FileNotFoundError(f"数据集不存在: {data_path}")
-    
-    # 输出目录
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(exist_ok=True)
-    output_file = output_dir / f"{args.strategy}_{args.dataset}.json"
-    
-    results = []
-    
-    with open(data_path, "r", encoding="utf-8") as f:
-        for line_idx, line in enumerate(f):
-            if args.limit is not None and line_idx >= args.limit:
-                break
-                
-            task = json.loads(line.strip())
-            result = process_single_task(task, construct_prompt)
-            result["strategy"] = args.strategy  # 添加策略名
-            results.append(result)
-            
-            print(f"完成任务 {line_idx + 1}")
-    
-    # 保存结果
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
-    
-    print(f"\n推理完成！结果已保存到: {output_file}")
-    print(f"共处理 {len(results)} 个任务")
+    else:
+        raise ValueError("请指定 --strategy <策略名> 或 --strategy all")
 
 
 if __name__ == "__main__":
