@@ -22,5 +22,7 @@ api_key.txt
 # 临时文件
 *.tmp
 
-# 忽略所有的 PNG 图片
+# 忽略所有的图片、报告
 *.png
+*.jpg
+*.pdf
