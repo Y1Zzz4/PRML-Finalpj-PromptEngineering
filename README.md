@@ -12,7 +12,7 @@
 - `utils/`:工具函数文件夹
   - parse.py             # 解析函数：从模型输出文本中提取预测网格 (parse_output)
 - `prompts/`:提示策略文件夹，每个 .py 文件实现一种提示策略的 construct_prompt 函数
-  - baseline.py                     # 最简单基线策略
+  - baseline.py                     # 基线策略
   - strategy_implicit_cot.py        # 隐式思维链
   - strategy_visual_cot.py          # 显式思维链 + 回环验证
   - strategy_reflection.py          # 自我反思
@@ -63,7 +63,7 @@ DEEPSEEK_MODEL=deepseek-chat
   python visualization/visualize_cases.py --strategy '策略名'（必须） --task_id '任务索引'（0-29）（必须） --save（可选，是否保存为图片）--output_dir '保存路径'（可选，默认'visuals_results'）
 ```
 
-注：我提交了本地运行之后的所有策略的results的压缩包，只需将结果文件全部导入项目空results文件夹中（注意是结果文件，不是文件夹,即./results文件夹下应该直接存放.json结果文件），运行
+注：我提交了所有本地推理得到的结果.json文件，git clone后只需要运行
   ```
   python .\evaluation\evaluate.py --pred all
   ```
