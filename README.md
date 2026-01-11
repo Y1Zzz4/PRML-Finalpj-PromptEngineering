@@ -12,12 +12,12 @@
 - `utils/`:工具函数文件夹
   - parse.py             # 解析函数：从模型输出文本中提取预测网格 (parse_output)
 - `prompts/`:提示策略文件夹，每个 .py 文件实现一种提示策略的 construct_prompt 函数
-  - baseline.py                 # 最简单基线策略
-  - strategy_implicit_cot.py             # 隐式思维链
-  - strategy_visual_cot.py      # 显式思维链
-  - strategy_reflection.py      # 自我反思
-  - strategy_structured.py      # 结构函数化
-  - strategy_
+  - baseline.py                     # 最简单基线策略
+  - strategy_implicit_cot.py        # 隐式思维链
+  - strategy_visual_cot.py          # 显式思维链 + 回环验证
+  - strategy_reflection.py          # 自我反思
+  - strategy_structured.py          # 结构函数化
+  - strategy_hypothesis_search.py   # 假设验证
 - `data/`：数据集
   - val.jsonl：30 条验证集
   - val_hard.jsonl：120 条更难数据集

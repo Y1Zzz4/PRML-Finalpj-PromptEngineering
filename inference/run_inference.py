@@ -79,7 +79,7 @@ def call_deepseek(messages: list) -> Optional[str]:
         return None
 
 
-def process_single_task(task: dict, construct_prompt: Callable) -> dict:
+def process_single_task(task: dict, construct_prompt: Callable, taskid: str) -> dict:
     """处理单个 ARC 任务"""
     messages = construct_prompt(task)
     
@@ -93,7 +93,7 @@ def process_single_task(task: dict, construct_prompt: Callable) -> dict:
         print(raw_output[:500] + "..." if len(raw_output) > 500 else raw_output)
     
     return {
-        "task_id": task.get("id", "unknown"),
+        "task_id": taskid,
         "messages": messages,
         "raw_output": raw_output,
         "predicted_grid": predicted_grid,
@@ -123,7 +123,8 @@ def run_strategy(strategy_name: str, construct_prompt: Callable, dataset: str, l
                 break
                 
             task = json.loads(line.strip())
-            result = process_single_task(task, construct_prompt)
+            current_task_id = f"task_{line_idx:02d}"
+            result = process_single_task(task, construct_prompt, current_task_id)
             result["strategy"] = strategy_name
             results.append(result)
             
